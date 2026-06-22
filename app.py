@@ -197,5 +197,32 @@ def alterar_qtd(sku):
     session.modified = True
     return redirect(url_for('pdv_caixa'))
 
+@app.route('/adicionar_carrinho_cliente/<sku>', methods=['POST'])
+def adicionar_carrinho_cliente(sku):
+    banco = carregar_banco()
+    prod = banco.get('produtos', {}).get(sku)
+    
+    # Pega a quantidade enviada pelo formulário, padrão é 1
+    qtd_desejada = int(request.form.get('qtd', 1))
+    
+    if prod and prod['quantidade'] >= qtd_desejada:
+        carrinho_cliente = session.setdefault('carrinho_cliente', {})
+        
+        if sku in carrinho_cliente:
+            carrinho_cliente[sku]['qtd'] += qtd_desejada
+        else:
+            carrinho_cliente[sku] = {
+                'nome': prod['nome'], 
+                'preco': prod['preco_varejo'], 
+                'qtd': qtd_desejada
+            }
+        
+        session.modified = True
+        flash(f"{qtd_desejada}x {prod['nome']} adicionado ao carrinho!")
+    else:
+        flash("Quantidade indisponível em estoque!")
+        
+    return redirect(url_for('catalogo'))
+
 if __name__ == '__main__':
     app.run(debug=True)
