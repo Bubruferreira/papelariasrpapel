@@ -1,0 +1,34 @@
+{
+    "usuarios": {
+        "caixa1": {
+            "senha": "123",
+            "cargo": "caixa"
+        },
+        "gerente": {
+            "senha": "admin",
+            "cargo": "gerencia"
+        }
+    },
+    "produtos": {
+        "7891011121314": {
+            "nome": "Caneta Stabilo Point 88",
+            "preco_varejo": 10.9,
+            "preco_atacado": 7.49,
+            "quantidade": 7
+        },
+        "7892021222324": {
+            "nome": "Caderno Inteligente A5",
+            "preco_varejo": 89.9,
+            "preco_atacado": 79.9,
+            "quantidade": 9
+        },
+        "1234": {
+            "nome": "paor",
+            "preco_varejo": 5.0,
+            "preco_atacado": 4.5,
+            "quantidade": 42
+        }
+    },
+    "vendas": [
+    ]
+}

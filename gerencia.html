@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block conteudo %}
+<div class="banner-header">
+    <h1>Dashboard BI</h1>
+    <p>Inteligência de Negócio Sr. Papel</p>
+</div>
+
+<h2 style="margin-bottom: 15px; color: var(--azul-bic);">📈 Curva de Estoque Atual</h2>
+<div class="card" style="margin-bottom: 30px;">
+    <canvas id="graficoEstoque" height="80"></canvas>
+</div>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <div class="alerta-sucesso">{{ messages[0] }}</div>
+  {% endif %}
+{% endwith %}
+
+<h2 style="margin-bottom: 15px; color: var(--azul-bic);">📦 Entrada de Estoque</h2>
+<div class="card" style="margin-bottom: 30px; border-left: 5px solid var(--sucesso);">
+    <p style="font-size: 0.85rem; color: var(--texto-claro); margin-bottom: 10px;">
+        Chegou mercadoria? Bipe produtos <b>já existentes</b> para somar ao estoque.
+    </p>
+    <form action="/entrada_estoque" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+        <input type="text" name="sku" placeholder="Bipar Cód. Barras" required class="input-leitor" style="flex: 2;">
+        <input type="number" name="qtd" placeholder="Qtd Recebida" required class="input-leitor" style="width: 150px;">
+        <button type="submit" class="btn-confirmar" style="background-color: var(--sucesso);">Adicionar ao Estoque</button>
+    </form>
+</div>
+
+<h2 style="margin-bottom: 15px; color: var(--azul-bic);">➕ Cadastrar Novo Produto</h2>
+<div class="card" style="margin-bottom: 30px;">
+    <form action="/adicionar_produto" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+        <input type="text" name="sku" placeholder="Cód. Barras" required class="input-leitor" style="flex: 1;">
+        <input type="text" name="nome" placeholder="Nome do Produto" required class="input-leitor" style="flex: 2;">
+        <input type="number" step="0.01" name="varejo" placeholder="R$ Varejo" required class="input-leitor" style="width: 110px;">
+        <input type="number" step="0.01" name="atacado" placeholder="R$ Atacado" required class="input-leitor" style="width: 110px;">
+        <input type="number" name="qtd" placeholder="Qtd" required class="input-leitor" style="width: 90px;">
+        <button type="submit" class="btn-confirmar" style="background-color: var(--azul-bic);">💾 Salvar Produto Novo</button>
+    </form>
+</div>
+
+<h2 style="margin-bottom: 15px; color: var(--azul-bic);">📋 Produtos no Banco de Dados</h2>
+<table>
+    <thead>
+        <tr>
+            <th>SKU</th>
+            <th>Nome</th>
+            <th>Varejo</th>
+            <th>Atacado</th>
+            <th>Estoque</th>
+            <th style="text-align: center;">Ações</th> </tr>
+    </thead>
+    <tbody>
+        {% for sku, produto in produtos.items() %}
+        <tr>
+            <td>{{ sku }}</td>
+            <td>{{ produto.nome }}</td>
+            <td>R$ {{ "%.2f"|format(produto.preco_varejo) }}</td>
+            <td>R$ {{ "%.2f"|format(produto.preco_atacado) }}</td>
+            {% if produto.quantidade <= 5 %}
+                <td style="color: var(--perigo); font-weight: bold;">{{ produto.quantidade }} (Baixo)</td>
+            {% else %}
+                <td>{{ produto.quantidade }}</td>
+            {% endif %}
+            
+            <td style="text-align: center;">
+                <a href="/editar_produto/{{ sku }}" class="btn-confirmar" style="background-color: var(--alerta); color: var(--texto-escuro); padding: 5px 10px; text-decoration: none; font-size: 0.8rem; margin-right: 5px;">✏️ Editar</a>
+                
+                <a href="/excluir_produto/{{ sku }}" class="btn-confirmar" style="background-color: var(--perigo); padding: 5px 10px; text-decoration: none; font-size: 0.8rem;" onclick="return confirm('Tem certeza que deseja apagar o produto {{ produto.nome }} permanentemente?')">🗑️ Excluir</a>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="6" style="text-align: center; color: var(--texto-claro);">Nenhum produto cadastrado.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const nomesProdutos = [
+        {% for sku, produto in produtos.items() %}
+            "{{ produto.nome }}",
+        {% endfor %}
+    ];
+
+    const qtdEstoque = [
+        {% for sku, produto in produtos.items() %}
+            {{ produto.quantidade }},
+        {% endfor %}
+    ];
+
+    const coresBarras = qtdEstoque.map(qtd => qtd <= 5 ? 'var(--perigo)' : 'var(--azul-bic)');
+
+    const ctx = document.getElementById('graficoEstoque').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: nomesProdutos,
+            datasets: [{
+                label: 'Unidades em Estoque',
+                data: qtdEstoque,
+                backgroundColor: coresBarras,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+</script>
+{% endblock %}

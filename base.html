@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sr. Papel - Sistema Integrado</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <h2>🔒 Acessos</h2>
+            
+            <div class="menu-label">Público</div>
+            <a href="/" class="menu-item">🛒 Catálogo</a>
+            
+            <div class="menu-label">Operação</div>
+            <a href="/pdv" class="menu-item">📦 Caixa (PDV)</a>
+            
+            <!-- AQUI É A MÁGICA: Só aparece se for gerencia -->
+            {% if session.get('cargo') == 'gerencia' %}
+            <div class="menu-label">Gerência</div>
+            <a href="/admin" class="menu-item">📊 Painel BI</a>
+            <a href="/historico" class="menu-item">📜 Histórico</a>
+            {% endif %}
+            
+            <div style="margin-top: auto;">
+                {% if session.get('usuario') %}
+                    <p style="font-size: 0.8rem; color: var(--texto-claro); margin-bottom: 5px;">Logado: <b>{{ session.get('usuario') }}</b></p>
+                    <a href="/logout" class="menu-item" style="color: var(--perigo); border-color: var(--perigo);">🚪 Sair</a>
+                {% endif %}
+            </div>
+        </aside>
+
+        <main class="main-content">
+            {% block conteudo %}
+            {% endblock %}
+        </main>
+    </div>
+</body>
+</html>
