@@ -6,6 +6,7 @@ import json
 app = Flask(__name__)
 app.secret_key = 'chave_super_secreta_sr_papel'
 
+# --- FUNÇÕES DE BANCO ---
 def carregar_banco():
     try:
         with open('database.json', 'r', encoding='utf-8') as f:
@@ -16,6 +17,12 @@ def carregar_banco():
 def salvar_banco(dados):
     with open('database.json', 'w', encoding='utf-8') as f:
         json.dump(dados, f, indent=4, ensure_ascii=False)
+
+# --- FUNÇÃO AUXILIAR DE SEGURANÇA (verifica estoque) ---
+def produto_esta_esgotado(sku):
+    banco = carregar_banco()
+    prod = banco.get('produtos', {}).get(sku)
+    return prod is None or prod['quantidade'] <= 0
 
 # --- DECORATORS ---
 def login_obrigatorio(f):
@@ -223,6 +230,28 @@ def adicionar_carrinho_cliente(sku):
         flash("Quantidade indisponível em estoque!")
         
     return redirect(url_for('catalogo'))
+
+@app.route('/remover_carrinho_cliente/<sku>', methods=['POST'])
+def remover_carrinho_cliente(sku):
+    carrinho = session.get('carrinho_cliente', {})
+    if sku in carrinho:
+        del carrinho[sku]
+        session.modified = True
+        flash("Item removido.")
+    return redirect(url_for('ver_carrinho'))
+
+@app.route('/carrinho')
+def ver_carrinho():
+    banco = carregar_banco()
+    carrinho = session.get('carrinho_cliente', {})
+    # Limpeza automática de esgotados
+    itens_para_remover = [sku for sku in carrinho if produto_esta_esgotado(sku)]
+    for sku in itens_para_remover:
+        del carrinho[sku]
+    session.modified = True
+    total = sum(item['preco'] * item['qtd'] for item in carrinho.values())
+    return render_template('carrinho_cliente.html', carrinho=carrinho, total=total, produto_esta_esgotado=produto_esta_esgotado)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
