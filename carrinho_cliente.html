@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<div class="card" style="padding: 20px; margin: 20px; overflow: hidden;">
+    <h2>Seu Carrinho</h2>
+    
+    <table style="width: 100%; border-collapse: collapse;">
+        {% for sku, item in carrinho.items() %}
+        <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 10px 0;">
+                {{ item.qtd }}x {{ item.nome }} - R$ {{ "%.2f"|format(item.preco * item.qtd) }}
+                {% if produto_esta_esgotado(sku) %}
+                    <br><span style="color: var(--perigo); font-size: 0.8rem;">❌ Esgotado!</span>
+                {% endif %}
+            </td>
+            <td style="text-align: right;">
+                {% if produto_esta_esgotado(sku) %}
+                    <form action="/remover_carrinho_cliente/{{ sku }}" method="POST">
+                        <button type="submit" class="btn-confirmar" style="background: var(--perigo); padding: 5px 10px;">Excluir</button>
+                    </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #eee;">
+        <p style="font-size: 1.2rem; font-weight: bold;">Total: R$ {{ "%.2f"|format(total) }}</p>
+    </div>
+    
+    <a href="/finalizar_pedido_whatsapp" class="btn-pastel" style="display: inline-block; margin-top: 15px; text-decoration: none;">Finalizar Pedido via WhatsApp</a>
+</div>
+{% endblock %}
