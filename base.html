@@ -16,9 +16,10 @@
             <a href="/" class="menu-item">🛒 Catálogo</a>
             <a href="/carrinho" class="menu-item">
     🛒 Carrinho 
-    {% if session.get('carrinho_cliente')|length > 0 %}
-        <span style="color: var(--azul-bic); text-decoration: underline;">
-            ({{ session.get('carrinho_cliente')|length }} itens)
+    {% set carrinho = session.get('carrinho_cliente') or {} %}
+    {% if carrinho|length > 0 %}
+        <span style="color: var(--azul-bic); text-decoration: underline; font-size: 0.8rem; margin-left: 5px;">
+            ({{ carrinho|length }} itens)
         </span>
     {% endif %}
 </a>
