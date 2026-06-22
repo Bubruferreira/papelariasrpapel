@@ -3,30 +3,51 @@
 <div class="card" style="padding: 20px; margin: 20px; overflow: hidden;">
     <h2>Seu Carrinho</h2>
     
-    <table style="width: 100%; border-collapse: collapse;">
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
         {% for sku, item in carrinho.items() %}
         <tr style="border-bottom: 1px solid #eee;">
             <td style="padding: 10px 0;">
-                {{ item.qtd }}x {{ item.nome }} - R$ {{ "%.2f"|format(item.preco * item.qtd) }}
+                {{ item.nome }}
                 {% if produto_esta_esgotado(sku) %}
                     <br><span style="color: var(--perigo); font-size: 0.8rem;">❌ Esgotado!</span>
                 {% endif %}
             </td>
-            <td style="text-align: right;">
-                {% if produto_esta_esgotado(sku) %}
-                    <form action="/remover_carrinho_cliente/{{ sku }}" method="POST">
-                        <button type="submit" class="btn-confirmar" style="background: var(--perigo); padding: 5px 10px;">Excluir</button>
+            
+            <td style="padding: 10px 0;">
+                {% if not produto_esta_esgotado(sku) %}
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <form action="/alterar_qtd_cliente/{{ sku }}" method="POST">
+                        <input type="hidden" name="acao" value="diminuir">
+                        <button type="submit" class="btn-confirmar" style="padding: 2px 10px; background: var(--texto-claro);">−</button>
                     </form>
+                    
+                    <b>{{ item.qtd }}</b>
+                    
+                    <form action="/alterar_qtd_cliente/{{ sku }}" method="POST">
+                        <input type="hidden" name="acao" value="aumentar">
+                        <button type="submit" class="btn-confirmar" style="padding: 2px 10px; background: var(--azul-bic);">+</button>
+                    </form>
+                </div>
                 {% endif %}
+            </td>
+
+            <td style="text-align: right;">
+                R$ {{ "%.2f"|format(item.preco * item.qtd) }}
+                <form action="/remover_carrinho_cliente/{{ sku }}" method="POST" style="display:inline; margin-left: 10px;">
+                    <button type="submit" style="background: none; border: none; color: var(--perigo); cursor: pointer;">🗑️</button>
+                </form>
             </td>
         </tr>
         {% endfor %}
     </table>
 
-    <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #eee;">
+    <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
         <p style="font-size: 1.2rem; font-weight: bold;">Total: R$ {{ "%.2f"|format(total) }}</p>
+        <form action="/limpar_carrinho_cliente" method="POST">
+            <button type="submit" class="btn-confirmar" style="background: var(--perigo);">Limpar Carrinho</button>
+        </form>
     </div>
     
-    <a href="/finalizar_pedido_whatsapp" class="btn-pastel" style="display: inline-block; margin-top: 15px; text-decoration: none;">Finalizar Pedido via WhatsApp</a>
+    <a href="/finalizar_pedido_whatsapp" class="btn-pastel" style="display: block; margin-top: 20px; text-align: center; text-decoration: none;">Finalizar Pedido via WhatsApp</a>
 </div>
 {% endblock %}
