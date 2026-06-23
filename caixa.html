@@ -8,10 +8,13 @@
 
 {% with messages = get_flashed_messages() %}
   {% if messages %}
-    <div style="background-color: {{ 'var(--perigo)' if 'esgotado' in messages[0].lower() or 'erro' in messages[0].lower() else 'var(--sucesso)' }}; 
-                color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 1.1rem; text-align: center;">
-        <b>{{ messages[0] }}</b>
-    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <label><b>Valor Recebido do Cliente (R$):</b></label>
+                        <input type="number" step="0.01" name="recebido" id="input-recebido" class="input-leitor" placeholder="Ex: 100.00" style="padding: 10px;">
+                        <div style="background-color: white; padding: 10px; border-radius: 8px; border: 1px dashed var(--borda); margin-top: 5px;">
+                            <span style="color: var(--texto-claro);">Troco a devolver:</span><br>
+                            <b id="valor-troco" style="font-size: 1.2rem; color: var(--alerta);">R$ 0.00</b>
+                        </div>
   {% endif %}
 {% endwith %}
 
