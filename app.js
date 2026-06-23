@@ -1,284 +1,111 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-from datetime import datetime
-from functools import wraps
-import json
+document.addEventListener("DOMContentLoaded", () => {
+    const themeToggle = document.getElementById("theme-toggle");
+    const roleSelector = document.getElementById("role-selector");
+    const viewRoot = document.getElementById("view-root");
+    const heroTitle = document.getElementById("hero-title");
+    const heroSubtitle = document.getElementById("hero-subtitle");
 
-app = Flask(__name__)
-app.secret_key = 'chave_super_secreta_sr_papel'
+    // 1. Alternador Dinâmico de Tema (Tokens)
+    themeToggle.addEventListener("click", () => {
+        const currentTheme = document.body.getAttribute("data-theme");
+        const targetTheme = currentTheme === "dark" ? "light" : "dark";
+        document.body.setAttribute("data-theme", targetTheme);
+    });
 
-# --- FUNÇÕES DE BANCO ---
-def carregar_banco():
-    try:
-        with open('database.json', 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except:
-        return {"usuarios": {}, "produtos": {}, "vendas": []}
+    // 2. Ouvinte de Papéis (RBAC System)
+    roleSelector.addEventListener("change", (e) => {
+        updateContextHeaders(e.target.value);
+        render(e.target.value);
+    });
 
-def salvar_banco(dados):
-    with open('database.json', 'w', encoding='utf-8') as f:
-        json.dump(dados, f, indent=4, ensure_ascii=False)
-
-# --- FUNÇÃO AUXILIAR DE SEGURANÇA (verifica estoque) ---
-def produto_esta_esgotado(sku):
-    banco = carregar_banco()
-    prod = banco.get('produtos', {}).get(sku)
-    return prod is None or prod['quantidade'] <= 0
-
-# --- DECORATORS ---
-def login_obrigatorio(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'usuario' not in session: return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-def gerencia_obrigatoria(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if session.get('cargo') != 'gerencia':
-            flash("Acesso restrito à gerência.")
-            return redirect(url_for('pdv_caixa'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-# --- ROTAS ---
-@app.route('/')
-def catalogo():
-    banco = carregar_banco()
-    produtos = banco.get('produtos', {})
-    busca = request.args.get('busca', '').lower()
-    if busca:
-        produtos = {sku: p for sku, p in produtos.items() if busca in p['nome'].lower()}
-    return render_template('catalogo.html', produtos=produtos)
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        u, s = request.form.get('usuario'), request.form.get('senha')
-        banco = carregar_banco()
-        user = banco.get('usuarios', {}).get(u)
-        if user and user['senha'] == s:
-            session['usuario'], session['cargo'] = u, user['cargo']
-            return redirect(url_for('painel_gerencia' if user['cargo'] == 'gerencia' else 'pdv_caixa'))
-        flash("Credenciais inválidas")
-    return render_template('login.html')
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
-@app.route('/pdv')
-@login_obrigatorio
-def pdv_caixa():
-    carrinho = session.get('carrinho', {})
-    total = sum(i['preco'] * i['qtd'] for i in carrinho.values())
-    return render_template('caixa.html', carrinho=carrinho, total=total)
-
-@app.route('/adicionar_carrinho', methods=['POST'])
-@login_obrigatorio
-def adicionar_carrinho():
-    sku = request.form.get('sku')
-    banco = carregar_banco()
-    prod = banco.get('produtos', {}).get(sku)
-    if prod and prod['quantidade'] > 0:
-        carrinho = session.setdefault('carrinho', {})
-        if sku in carrinho:
-            if carrinho[sku]['qtd'] < prod['quantidade']: carrinho[sku]['qtd'] += 1
-            else: flash("Estoque insuficiente!")
-        else: carrinho[sku] = {'nome': prod['nome'], 'preco': prod['preco_varejo'], 'qtd': 1}
-        session.modified = True
-    else: flash("Produto indisponível!")
-    return redirect(url_for('pdv_caixa'))
-
-@app.route('/finalizar_venda', methods=['POST'])
-@login_obrigatorio
-def finalizar_venda():
-    carrinho = session.get('carrinho', {})
-    if not carrinho: return redirect(url_for('pdv_caixa'))
-        
-    banco = carregar_banco()
-    
-    # Cálculos para o recibo
-    total_bruto = sum(item['preco'] * item['qtd'] for item in carrinho.values())
-    desconto = float(request.form.get('desconto') or 0)
-    valor_recebido = float(request.form.get('recebido') or 0)
-    total_pagar = total_bruto - desconto
-    troco = valor_recebido - total_pagar if valor_recebido > total_pagar else 0
-    
-    # Estrutura completa exigida pelo seu recibo.html
-    recibo_dados = {
-        'data': datetime.now().strftime("%d/%m/%Y %H:%M"),
-        'operador': session.get('usuario', 'Caixa'),
-        'itens': list(carrinho.values()),
-        'total_bruto': total_bruto,
-        'desconto': desconto,
-        'total_pagar': total_pagar,
-        'forma_pgto': request.form.get('pagamento'),
-        'valor_recebido': valor_recebido,
-        'troco': troco
+    function updateContextHeaders(role) {
+        if (role === "cliente") {
+            heroTitle.innerText = "Sr. Papel";
+            heroSubtitle.innerText = "Catálogo Oficial • Atualizado em Tempo Real";
+        } else if (role === "caixa") {
+            heroTitle.innerText = "🏪 PDV Rápido";
+            heroSubtitle.innerText = "Terminal de Saída Balcão";
+        } else {
+            heroTitle.innerText = "📊 Inteligência Corporativa";
+            heroSubtitle.innerText = "Análise Tática de Performance Geral";
+        }
     }
-    
-    # Salva no histórico e desconta estoque
-    banco.setdefault('vendas', []).append(recibo_dados)
-    for sku, item in carrinho.items():
-        if sku in banco['produtos']:
-            banco['produtos'][sku]['quantidade'] -= item['qtd']
+
+    async function render(role) {
+        viewRoot.innerHTML = "<p>Carregando dados da aplicação...</p>";
+        try {
+            const products = await ApiService.fetchProducts();
+            viewRoot.innerHTML = "";
+
+            if (role === "cliente") {
+                const grid = document.createElement("div");
+                grid.className = "grid-container";
+
+                products.forEach(p => {
+                    const card = document.createElement("div");
+                    card.className = "card";
+                    
+                    let stockStatus = `<span style="color: var(--success); font-weight:bold;">✔ Disponível</span>`;
+                    if (p.Quantidade_Atual === 0) {
+                        stockStatus = `<span style="color: var(--text-muted); text-decoration: line-through;">❌ Indisponível</span>`;
+                    } else if (p.Quantidade_Atual <= p.Ponto_Pedido) {
+                        stockStatus = `<span style="color: var(--danger); font-weight:bold;">🔥 Apenas ${p.Quantidade_Atual} un!</span>`;
+                    }
+
+                    card.innerHTML = `
+                        <h3>${p.Nome}</h3>
+                        <p style="color: var(--text-muted); font-size:0.85rem;">EAN: ${p.SKU_EAN}</p>
+                        <p><strong>Varejo:</strong> R$ ${p.Preco_Varejo.toFixed(2)}</p>
+                        <div style="margin: 15px 0;">${stockStatus}</div>
+                        <button class="btn-primary" ${p.Quantidade_Atual === 0 ? 'disabled' : ''}>Comprar</button>
+                    `;
+                    grid.appendChild(card);
+                });
+                viewRoot.appendChild(grid);
+            } 
             
-    salvar_banco(banco)
-    
-    # Envia os dados para a página de recibo
-    session['ultimo_recibo'] = recibo_dados
-    session.pop('carrinho', None)
-    return redirect(url_for('exibir_recibo'))
+            else if (role === "caixa") {
+                // Interface Otimizada para Entrada de Leitor ou Teclado ("Modo Tio")
+                const posContainer = document.createElement("div");
+                posContainer.className = "card";
+                posContainer.innerHTML = `
+                    <h3>Registrar Venda por Código de Barras</h3>
+                    <div style="margin: 20px 0;">
+                        <input type="text" id="barcode-input" class="select-control" placeholder="Bipe ou digite o código SKU" autofocus>
+                    </div>
+                    <button id="btn-submit-sale" class="btn-primary">Confirmar Baixa do Item</button>
+                    <div id="pos-feedback" style="margin-top: 15px; font-weight: 600;"></div>
+                `;
+                viewRoot.appendChild(posContainer);
 
-@app.route('/admin')
-@gerencia_obrigatoria
-def painel_gerencia():
-    return render_template('gerencia.html', produtos=carregar_banco().get('produtos', {}))
+                const input = document.getElementById("barcode-input");
+                const feedback = document.getElementById("pos-feedback");
 
-@app.route('/historico')
-@gerencia_obrigatoria
-def historico_vendas():
-    return render_template('historico.html', vendas=carregar_banco().get('vendas', []))
+                const executeSale = async () => {
+                    const sku = input.value.trim();
+                    if(!sku) return;
+                    feedback.innerText = "Processando transação...";
+                    const res = await ApiService.processSale(sku);
+                    
+                    if (res.status === "success") {
+                        feedback.style.color = "var(--success)";
+                        feedback.innerText = res.message;
+                        input.value = "";
+                        input.focus();
+                    } else {
+                        feedback.style.color = "var(--danger)";
+                        feedback.innerText = res.message;
+                    }
+                };
 
-@app.route('/adicionar_produto', methods=['POST'])
-@gerencia_obrigatoria
-def adicionar_produto():
-    banco = carregar_banco()
-    sku = request.form.get('sku')
-    banco['produtos'][sku] = {
-        "nome": request.form.get('nome'),
-        "preco_varejo": float(request.form.get('varejo')),
-        "preco_atacado": float(request.form.get('atacado')),
-        "quantidade": int(request.form.get('qtd'))
-    }
-    salvar_banco(banco)
-    return redirect(url_for('painel_gerencia'))
-
-@app.route('/entrada_estoque', methods=['POST'])
-@gerencia_obrigatoria
-def entrada_estoque():
-    banco = carregar_banco()
-    sku, qtd = request.form.get('sku'), int(request.form.get('qtd'))
-    if sku in banco['produtos']:
-        banco['produtos'][sku]['quantidade'] += qtd
-        salvar_banco(banco)
-    return redirect(url_for('painel_gerencia'))
-
-@app.route('/excluir_produto/<sku>')
-@gerencia_obrigatoria
-def excluir_produto(sku):
-    banco = carregar_banco()
-    if sku in banco.get('produtos', {}):
-        del banco['produtos'][sku]
-        salvar_banco(banco)
-    return redirect(url_for('painel_gerencia'))
-
-@app.route('/editar_produto/<sku>', methods=['GET', 'POST'])
-@gerencia_obrigatoria
-def editar_produto(sku):
-    banco = carregar_banco()
-    if request.method == 'POST':
-        p = banco['produtos'][sku]
-        p['nome'], p['preco_varejo'] = request.form['nome'], float(request.form['varejo'])
-        p['preco_atacado'], p['quantidade'] = float(request.form['atacado']), int(request.form['qtd'])
-        salvar_banco(banco)
-        return redirect(url_for('painel_gerencia'))
-    return render_template('editar.html', sku=sku, produto=banco['produtos'][sku])
-
-@app.route('/recibo')
-@login_obrigatorio
-def exibir_recibo():
-    return render_template('recibo.html', recibo=session.get('ultimo_recibo'))
-
-@app.route('/alterar_qtd/<sku>', methods=['POST'])
-@login_obrigatorio
-def alterar_qtd(sku):
-    carrinho = session.get('carrinho', {})
-    acao = request.form.get('acao')
-    if sku in carrinho:
-        if acao == 'aumentar': carrinho[sku]['qtd'] += 1
-        else: carrinho[sku]['qtd'] -= 1
-        if carrinho[sku]['qtd'] <= 0: del carrinho[sku]
-    session.modified = True
-    return redirect(url_for('pdv_caixa'))
-
-@app.route('/adicionar_carrinho_cliente/<sku>', methods=['POST'])
-def adicionar_carrinho_cliente(sku):
-    banco = carregar_banco()
-    prod = banco.get('produtos', {}).get(sku)
-    
-    # Pega a quantidade enviada pelo formulário, padrão é 1
-    qtd_desejada = int(request.form.get('qtd', 1))
-    
-    if prod and prod['quantidade'] >= qtd_desejada:
-        carrinho_cliente = session.setdefault('carrinho_cliente', {})
-        
-        if sku in carrinho_cliente:
-            carrinho_cliente[sku]['qtd'] += qtd_desejada
-        else:
-            carrinho_cliente[sku] = {
-                'nome': prod['nome'], 
-                'preco': prod['preco_varejo'], 
-                'qtd': qtd_desejada
+                document.getElementById("btn-submit-sale").addEventListener("click", executeSale);
+                input.addEventListener("keypress", (e) => { if(e.key === "Enter") executeSale(); });
             }
-        
-        session.modified = True
-        flash(f"{qtd_desejada}x {prod['nome']} adicionado ao carrinho!")
-    else:
-        flash("Quantidade indisponível em estoque!")
-        
-    return redirect(url_for('catalogo'))
+        } catch (error) {
+            viewRoot.innerHTML = "<p style='color: var(--danger);'>Ocorreu um erro crítico ao renderizar a interface.</p>";
+        }
+    }
 
-@app.route('/alterar_qtd_cliente/<sku>', methods=['POST'])
-def alterar_qtd_cliente(sku):
-    carrinho = session.get('carrinho_cliente', {})
-    acao = request.form.get('acao')
-    
-    if sku in carrinho:
-        if acao == 'aumentar':
-            # Verifica estoque antes de aumentar
-            banco = carregar_banco()
-            prod = banco.get('produtos', {}).get(sku)
-            if carrinho[sku]['qtd'] < prod['quantidade']:
-                carrinho[sku]['qtd'] += 1
-        else:
-            carrinho[sku]['qtd'] -= 1
-            if carrinho[sku]['qtd'] <= 0:
-                del carrinho[sku]
-    
-    session.modified = True
-    return redirect(url_for('ver_carrinho'))
-
-
-@app.route('/remover_carrinho_cliente/<sku>', methods=['POST'])
-def remover_carrinho_cliente(sku):
-    carrinho = session.get('carrinho_cliente', {})
-    if sku in carrinho:
-        del carrinho[sku]
-        session.modified = True
-        flash("Item removido.")
-    return redirect(url_for('ver_carrinho'))
-
-@app.route('/limpar_carrinho_cliente', methods=['POST'])
-def limpar_carrinho_cliente():
-    session.pop('carrinho_cliente', None)
-    flash("Carrinho esvaziado.")
-    return redirect(url_for('catalogo'))
-
-@app.route('/carrinho')
-def ver_carrinho():
-    banco = carregar_banco()
-    carrinho = session.get('carrinho_cliente', {})
-    # Limpeza automática de esgotados
-    itens_para_remover = [sku for sku in carrinho if produto_esta_esgotado(sku)]
-    for sku in itens_para_remover:
-        del carrinho[sku]
-    session.modified = True
-    total = sum(item['preco'] * item['qtd'] for item in carrinho.values())
-    return render_template('carrinho_cliente.html', carrinho=carrinho, total=total, produto_esta_esgotado=produto_esta_esgotado)
-
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    // Inicialização da View padrão
+    render("cliente");
+});
